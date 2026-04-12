@@ -1,0 +1,4 @@
+Flask
+docx2txt
+pdfminer.six
+

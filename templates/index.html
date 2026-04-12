@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Resume Analyzer</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#10b981', /* Emerald Green */
+                        'secondary': '#f97316', /* Orange */
+                        'background': '#f3f4f6', /* Light Gray */
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Optional custom styles for smoother transitions */
+        .transition-colors {
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-2xl bg-white shadow-xl rounded-2xl p-8 md:p-12">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-extrabold text-gray-900 mb-2">
+                Smart Resume Analyzer
+            </h1>
+            <p class="text-gray-500">
+                Upload your resume and job description to get instant insights.
+            </p>
+        </header>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="mb-6 space-y-3">
+                    {% for message in messages %}
+                        <div class="rounded-xl bg-red-50 border border-red-200 p-4 text-red-700">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Upload Form -->
+        <form method="POST" action="{{ url_for('upload') }}" enctype="multipart/form-data" class="space-y-6">
+            
+            <!-- Job Description Upload/Text Area -->
+            <div class="p-6 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                <label for="job_description_text" class="block text-sm font-medium text-gray-700 mb-2">
+                    Paste Job Description (Recommended)
+                </label>
+                    <textarea id="job_description_text" name="job_description_text" rows="5"
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition duration-150 ease-in-out" 
+                    placeholder="E.g., Senior Software Engineer: 5+ years experience with Python, Flask, and PostgreSQL...">
+</textarea>
+                <p class="text-xs text-gray-400 mt-1">
+                    Alternatively, the system will use the default `models/job_description.txt` file.
+                </p>
+            </div>
+
+
+            <!-- Resume File Upload Area (Drag and Drop style) -->
+            <div class="border-2 border-dashed border-primary rounded-xl p-8 text-center hover:border-secondary transition-colors duration-200"
+                id="drop-area">
+                    <input type="file" name="resume" id="resume-file-input" class="hidden" accept=".pdf,.docx">
+                
+                <div id="file-prompt">
+                    <svg class="mx-auto h-12 w-12 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 014 4v1H6"/>
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-600">
+                        <span class="font-semibold text-primary cursor-pointer hover:underline" onclick="document.getElementById('resume-file-input').click()">Click to upload</span> or drag and drop
+                    </p>
+                    <p class="text-xs text-gray-500">
+                        PDF or DOCX (Max 10MB)
+                    </p>
+                </div>
+                
+                <p id="file-name" class="hidden mt-3 text-sm font-medium text-gray-800"></p>
+            </div>
+            
+            <!-- Submit Button -->
+            <button type="submit" 
+                    class="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-xl shadow-lg text-white bg-primary hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition duration-150 ease-in-out">
+                Analyze Resume
+                <svg class="ml-2 -mr-1 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V14a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        </form>
+
+    </div>
+
+    <script>
+        // JavaScript for drag-and-drop functionality
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('resume-file-input');
+        const fileNameDisplay = document.getElementById('file-name');
+        const filePrompt = document.getElementById('file-prompt');
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Highlight drop area when file is dragged over
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.add('border-secondary'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.remove('border-secondary'), false);
+        });
+
+        // Handle dropped files
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            
+            if (files.length) {
+                fileInput.files = files;
+                updateFileName(files[0].name);
+            }
+        }
+
+        // Handle file selected via click
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                updateFileName(e.target.files[0].name);
+            }
+        });
+
+        function updateFileName(name) {
+            filePrompt.classList.add('hidden');
+            fileNameDisplay.textContent = `File Selected: ${name}`;
+            fileNameDisplay.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

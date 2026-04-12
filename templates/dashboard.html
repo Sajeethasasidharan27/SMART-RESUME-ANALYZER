@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Results</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Load Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#10b981', 
+                        'success': '#34d399', 
+                        'warning': '#facc15',
+                        'danger': '#ef4444',
+                        'background': '#f3f4f6',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background min-h-screen p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-extrabold text-gray-900 mb-2">
+                Resume Analysis Dashboard
+            </h1>
+            <p class="text-gray-500">
+                Detailed comparison of your resume against the target Job Description.
+            </p>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Left Column: Score and Key Skills (Takes 2/3 width on desktop) -->
+            <div class="lg:col-span-2 space-y-8">
+                
+                <!-- Matching Score Card -->
+                <div class="bg-white shadow-lg rounded-xl p-6 border-t-4 border-primary">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Overall Match Score</h2>
+                    <div class="flex items-center justify-between mb-4">
+                        <span id="score-text" class="text-5xl font-bold text-primary">
+                            {% if analysis.overall_score is not none %}{{ analysis.overall_score }}%{% else %}N/A{% endif %}
+                        </span>
+                        <div class="text-right">
+                            <p class="text-sm font-medium text-gray-500">Overall Match</p>
+                            <span id="match-status" class="inline-block px-3 py-1 text-sm font-semibold rounded-full bg-warning text-yellow-800">
+                                {% if analysis.overall_score is not none %}
+                                    {% if analysis.overall_score >= 85 %}Excellent Match{% elif analysis.overall_score >= 60 %}Moderate Match{% else %}Poor Match{% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2">
+                        Skill match: {% if analysis.skill_match_percent is not none %}{{ analysis.skill_match_percent }}%{% else %}N/A{% endif %} · Role relevance: {% if analysis.role_match_percent is not none %}{{ analysis.role_match_percent }}%{% else %}N/A{% endif %}
+                    </p>
+                    
+                    <!-- Chart Visualization -->
+                    {% if analysis.overall_score is not none %}
+                    <div class="w-full h-80">
+                        <canvas id="scoreChart"></canvas>
+                    </div>
+                    {% else %}
+                    <div class="w-full h-80 flex items-center justify-center text-gray-500">
+                        Match chart unavailable until job description skills are detected.
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Missing/Required Skills Card -->
+                <div class="bg-white shadow-lg rounded-xl p-6 border-t-4 border-secondary">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Actionable Insights</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Missing Skills -->
+                        <div>
+                            <h3 class="text-xl font-medium text-danger mb-3 flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Missing Core Skills
+                            </h3>
+                            <ul class="space-y-2">
+                                {% if analysis.missing_skills %}
+                            {% for skill in analysis.missing_skills %}
+                                <li class="bg-red-50 p-3 rounded-lg text-red-700 border-l-4 border-danger">{{ skill }}</li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="bg-green-50 p-3 rounded-lg text-green-700 border-l-4 border-success">No missing skills detected.</li>
+                        {% endif %}
+                            </ul>
+                        </div>
+
+                        <!-- Matched Skills -->
+                        <div>
+                            <h3 class="text-xl font-medium text-success mb-3 flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Matched Skills
+                            </h3>
+                            <ul class="space-y-2">
+                                {% if analysis.matched_skills %}
+                                    {% for skill in analysis.matched_skills %}
+                                        <li class="bg-green-50 p-3 rounded-lg text-green-700 border-l-4 border-success">{{ skill }}</li>
+                                    {% endfor %}
+                                {% else %}
+                                    <li class="bg-gray-50 p-3 rounded-lg text-gray-700 border-l-4 border-gray-300">No matched skills found yet.</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Job Description and Resume Summary (Takes 1/3 width on desktop) -->
+            <div class="lg:col-span-1 space-y-8">
+                
+                <!-- Job Description Card -->
+                <div class="bg-white shadow-lg rounded-xl p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Target Job Description</h3>
+                    <div class="text-sm text-gray-600 space-y-4 max-h-96 overflow-y-auto">
+                        {% if analysis.job_title %}
+                            <p class="font-medium">Role:</p>
+                            <p>{{ analysis.job_title }}</p>
+                        {% endif %}
+                        {% if analysis.job_description_skills %}
+                            <p class="font-medium mt-3">Detected job description skills:</p>
+                            <p>{{ analysis.job_description_skills | join(', ') }}</p>
+                        {% else %}
+                            <p>No skills were detected in the job description. Please provide a job description or update the default template.</p>
+                        {% endif %}
+                    </div>
+                    {% if analysis.overall_score is none %}
+                    <div class="mt-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-yellow-700 text-sm">
+                        Resume scoring cannot be calculated until the job description contains recognizable skills.
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Resume Summary Card -->
+                <div class="bg-white shadow-lg rounded-xl p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Parsed Resume Summary</h3>
+                    <ul class="text-sm text-gray-600 space-y-2">
+                        <li class="flex justify-between">
+                            <span class="font-medium">Experience:</span>
+                            <span>{{ analysis.resume_summary.experience }}</span>
+                        </li>
+                        <li class="flex justify-between">
+                            <span class="font-medium">Education:</span>
+                            <span>{{ analysis.resume_summary.education }}</span>
+                        </li>
+                        <li class="flex justify-between">
+                            <span class="font-medium">Contact:</span>
+                            <span>{{ analysis.resume_summary.contact }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="mt-10 text-center">
+            <a href="/" class="text-primary hover:text-emerald-600 font-medium flex items-center justify-center">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Upload New Resume
+            </a>
+        </footer>
+    </div>
+
+    <div id="analysis-data" style="display:none;"
+         data-overall-score="{% if analysis.overall_score is not none %}{{ analysis.overall_score }}{% else %}0{% endif %}"
+         data-has-score="{% if analysis.overall_score is not none %}true{% else %}false{% endif %}">
+    </div>
+
+    <script>
+        // Chart.js Initialization (Simulated Data)
+        document.addEventListener('DOMContentLoaded', function() {
+            const analysisData = document.getElementById('analysis-data').dataset;
+            const hasMatchPercent = analysisData.hasScore === 'true';
+            const matchScore = Number(analysisData.overallScore);
+
+            // Update status badge based on score
+            const scoreText = document.getElementById('score-text');
+            const matchStatus = document.getElementById('match-status');
+
+            if (hasMatchPercent) {
+                scoreText.textContent = `${matchScore}%`;
+            } else {
+                scoreText.textContent = 'N/A';
+            }
+
+            let status = 'Poor Match';
+            let statusClass = 'bg-danger text-red-800';
+
+            if (hasMatchPercent) {
+                if (matchScore >= 85) {
+                    status = 'Excellent Match';
+                    statusClass = 'bg-success text-green-800';
+                } else if (matchScore >= 60) {
+                    status = 'Moderate Match';
+                    statusClass = 'bg-warning text-yellow-800';
+                }
+            } else {
+                status = 'N/A';
+                statusClass = 'bg-gray-200 text-gray-700';
+            }
+
+            matchStatus.textContent = status;
+            matchStatus.className = `inline-block px-3 py-1 text-sm font-semibold rounded-full ${statusClass}`;
+
+            if (hasMatchPercent) {
+                // Doughnut Chart Setup
+                const ctx = document.getElementById('scoreChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Matched Skills', 'Missing Skills'],
+                        datasets: [{
+                            data: [matchScore, 100 - matchScore],
+                            backgroundColor: ['#10b981', '#e5e7eb'],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '80%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed !== null) {
+                                            label += context.parsed.toFixed(0) + '%';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
