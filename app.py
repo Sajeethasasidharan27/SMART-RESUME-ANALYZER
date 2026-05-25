@@ -3,9 +3,11 @@ from resume_parser import extract_text
 from analyzer import analyze_resume
 from werkzeug.utils import secure_filename
 import os
+import tempfile
+import uuid
 
 app = Flask(__name__)
-UPLOAD_FOLDER = os.path.join(app.root_path, 'uploads')
+UPLOAD_FOLDER = tempfile.gettempdir()
 ALLOWED_EXTENSIONS = {'pdf', 'docx'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -35,10 +37,18 @@ def upload():
         return redirect(url_for('index'))
 
     filename = secure_filename(file.filename)
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
     file.save(filepath)
 
     resume_text = extract_text(filepath)
+    
+    # Clean up file from /tmp to avoid storage issues on serverless functions
+    try:
+        os.remove(filepath)
+    except Exception:
+        pass
+
     if not resume_text:
         flash('Could not extract text from the uploaded resume. Please upload a valid PDF or DOCX file.')
         return redirect(url_for('index'))

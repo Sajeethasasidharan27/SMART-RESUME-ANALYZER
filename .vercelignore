@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+.git/
+.vscode/
+database.db
+uploads/
+test_resume.pdf
